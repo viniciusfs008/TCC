@@ -219,7 +219,7 @@ void draw_circle(int x, int y, int r){
 			colt2 = col * col;
 			if (rowt2 + colt2 <= bord_init){
 				if (rowt2 + colt2 > bord_end){
-					if (STROKE_COLOR == TRANSPARENT && rowt2 + colt2 <= rt2){
+					if ( STROKE_COLOR == TRANSPARENT && rowt2 + colt2 <= rt2){
 						color = FILL_COLOR;
 					}else{
 						color = STROKE_COLOR;
@@ -237,7 +237,7 @@ void draw_circle(int x, int y, int r){
 		}
 	}
 	//desenhar os pixels quem faltam na borda para ficar mais bonito
-	if (STROKE_COLOR != TRANSPARENT){
+	if (STROKE_COLOR != TRANSPARENT && STROKE_WEIGHT > 0){
 		place_pixel(x, (y-r)+half_sw_ceil, STROKE_COLOR);
 		place_pixel(x, (y+r)-half_sw_ceil, STROKE_COLOR);
 		place_pixel(x-r+half_sw_ceil, y, STROKE_COLOR);
@@ -296,6 +296,7 @@ void draw_string(char *string, int x, int y, uint32 size, double cursor_x, doubl
 	uint32 line = 0;
 	uint32 char_iterator = 0;
 	uint32 c;
+	uint32 qtd_linhas = str_number_of_lines(string);
 	while(true){
 		string_size = 0;
 		while(string[char_iterator] != '\n' && string[char_iterator] != '\0'){
@@ -303,7 +304,7 @@ void draw_string(char *string, int x, int y, uint32 size, double cursor_x, doubl
 			char_iterator++;
 		}
 		new_x = x - ((string_size*LETTER_WIDTH*size) * cursor_x);
-		new_y = y - ((LETTER_HEIGHT*size) * cursor_y);
+		new_y = y - ((qtd_linhas*LETTER_HEIGHT*size) * cursor_y);
 		for (int i = string_size; i > 0; i--){
 			draw_char(string[char_iterator-i], new_x + (string_size - i)*LETTER_WIDTH*size, new_y, size);
 		}
@@ -398,6 +399,22 @@ void print_display_info(gpu_resp_display_info *info){
 	}
 }
 
+void print_gpu_cfg(gpu_config *cfg){
+	printf("GPU CONFIGS: \n");
+	printf(
+		"\tevents_read: %d\n"
+		"\tevents_clear: %d\n"
+		"\tnum_scanouts: %d\n"
+		"\treserved: %d\n"
+		,
+		cfg->events_read,
+		cfg->events_clear,
+		cfg->num_scanouts,
+		cfg->reserved
+	);
+}
+
+
 void set_resource_flush(resource_flush *flush, gpu_ctrl_hdr hdr, gpu_rect rect, uint32 res_id, uint32 padding){
 	flush->hdr = hdr;
 	flush->r = rect;
@@ -471,6 +488,35 @@ void init_gpu_device(gpu_device *device){
 	gpu_ctrl_hdr hdr;
 
 	clear();
+
+	set_header(&hdr, VIRTIO_GPU_CMD_GET_DISPLAY_INFO, 0,0,0,0);
+	gpu_resp_display_info *resposta_display = (gpu_resp_display_info*) alloc(1);
+	VirtQDescriptor info, info_resp;
+	set_descriptor(
+		&info, (uint64) &hdr, sizeof(gpu_ctrl_hdr), VIRTQ_DESC_F_NEXT, device->idx + 1
+	);
+	set_descriptor(
+		&info_resp,
+		(uint64) resposta_display,
+		sizeof(gpu_resp_display_info),
+		VIRTQ_DESC_F_WRITE,
+		0
+	);
+
+	head = device->idx;
+	device->queue->desc[device->idx] = info;
+	device->idx = (device->idx + 1) % QNUM;
+	device->queue->desc[device->idx] = info_resp;
+	device->idx = (device->idx + 1) % QNUM;
+	device->queue->av.ring[device->queue->av.index % QNUM] = head;
+	device->queue->av.index = (device->queue->av.index + 1); //wrapping_add(1) ???
+
+	write_to_reg(device->dev, QUEUE_NOTIFY, 0);
+	while(device->queue->av.index != device->queue->used.index);
+
+	print_display_info(resposta_display);
+
+
 
 	set_header(&hdr, VIRTIO_GPU_CMD_RESOURCE_CREATE_2D, 0, 0, 0, 0);
 	resource_create_2d *res = (resource_create_2d*) alloc(1);
@@ -601,87 +647,58 @@ void init_gpu_device(gpu_device *device){
 	device->queue->av.ring[device->queue->av.index % QNUM] = head;
 	device->queue->av.index = (device->queue->av.index + 1) % QNUM; //wrapping_add(1) ???
 
-	//*******************************************************************************************//
-	//step 4
-	//transfer to host
-	transfer_to_host_2d *transfer = (transfer_to_host_2d*)alloc(1);
+	//RUN THE QUEUE
+	write_to_reg(device->dev, QUEUE_NOTIFY, 0);
+	while(device->queue->av.index != device->queue->used.index);
+
 	set_header(
 		&hdr,
-		VIRTIO_GPU_CMD_TRANSFER_TO_HOST_2D,
-		0,
-		0,
-		0,
-		0
+		VIRTIO_GPU_CMD_GET_EDID,
+		0,0,0,0
 	);
-	set_rect(&rect, 0, 0, device->width, device->height);
-	set_transfer_to_host(transfer, hdr, rect, 0, RESOURCE_ID, 0);
-	VirtQDescriptor desc_t2h, desc_t2h_response;
-	gpu_ctrl_hdr *response4 = (gpu_ctrl_hdr*)alloc(1);
-	set_descriptor(
-		&desc_t2h,
-		(uint64)transfer,
-		sizeof(transfer_to_host_2d),
-		VIRTQ_DESC_F_NEXT,
-		(device->idx + 1)%QNUM
-	);
-	set_descriptor(
-		&desc_t2h_response,
-		(uint64)response4,
-		sizeof(gpu_ctrl_hdr),
-		VIRTQ_DESC_F_WRITE,
-		0
-	);
-	head = device->idx;
-	device->queue->desc[device->idx] = desc_t2h;
-	device->idx = (device->idx + 1) % QNUM;
-	device->queue->desc[device->idx] = desc_t2h_response;
-	device->idx = (device->idx + 1) % QNUM;
-	device->queue->av.ring[device->queue->av.index % QNUM] = head;
-	device->queue->av.index = (device->queue->av.index + 1) % QNUM; //wrapping_add(1) ???
 
-	//****************************************************************************************//
-	//STEP 5 
-	//FLUSH
-	resource_flush *flush = (resource_flush*) alloc(1);
-	set_header(
-		&hdr,
-		VIRTIO_GPU_CMD_RESOURCE_FLUSH,
-		0,
-		0,
-		0,
-		0
-	);
-	set_rect(&rect, 0, 0, device->width, device->height);
-	set_resource_flush(flush, hdr, rect, RESOURCE_ID, 0);
+	//getting the edid and printing on the screen
+	get_ed_id *edid = (get_ed_id*) alloc(1);
+	edid->hdr = hdr;
+	edid->paddind = 0;
+	edid->scanout = 0;
 
-	VirtQDescriptor desc_rf, desc_rf_resp;
-	gpu_ctrl_hdr *response5 = (gpu_ctrl_hdr*)alloc(1);
+	resp_ed_id *resp_edid = (resp_ed_id*) alloc(1);
+	
+	VirtQDescriptor desc_edid, desc_resp_edid;
 	set_descriptor(
-		&desc_rf,
-		(uint64)flush,
-		sizeof(resource_flush),
+		&desc_edid,
+		(uint64) edid,
+		sizeof(get_ed_id),
 		VIRTQ_DESC_F_NEXT,
 		(device->idx + 1) % QNUM
 	);
 	set_descriptor(
-		&desc_rf_resp,
-		(uint64)response5,
-		sizeof(gpu_ctrl_hdr),
+		&desc_resp_edid,
+		(uint64) resp_edid,
+		sizeof(resp_ed_id),
 		VIRTQ_DESC_F_WRITE,
 		0
 	);
 	head = device->idx;
-	device->queue->desc[device->idx] = desc_rf;
+	device->queue->desc[device->idx] = desc_edid;
 	device->idx = (device->idx + 1) % QNUM;
-	device->queue->desc[device->idx] = desc_rf_resp;
+	device->queue->desc[device->idx] = desc_resp_edid;
 	device->idx = (device->idx + 1) % QNUM;
 	device->queue->av.ring[device->queue->av.index % QNUM] = head;
 	device->queue->av.index = (device->queue->av.index + 1) % QNUM; //wrapping_add(1) ???
-
-
-	//RUN THE QUEUE
 	write_to_reg(device->dev, QUEUE_NOTIFY, 0);
 	while(device->queue->av.index != device->queue->used.index);
+
+	for (int i = 0; i < 1024; i++){
+		if (i % 8 == 0){
+			printf("\n%x -- %x\t", i, i + 7);
+		}
+		printf("%x ", resp_edid->edid[i]);
+	}
+	printf("\n\n");
+
+
 }
 
 
@@ -696,15 +713,23 @@ gpu_device* setup_gpu_device(uint64 ptr){
 
 	//reset device -- writing 0 to status register
 	write_to_reg(ptr, STATUS, 0);
-	//set ack bit
-	set_bit(ptr, STATUS, STATUS_ACKNOWLEDGE);
-	//set driver status bit
-	set_bit(ptr, STATUS, STATUS_DRIVER);
+	
+	set_bit(ptr, STATUS, STATUS_ACKNOWLEDGE);//set ack bit
+	
+	set_bit(ptr, STATUS, STATUS_DRIVER);//set driver status bit
 
-	write_to_reg(ptr, HOST_FEATURES_SEL, 0);
-	uint32 host_feat = read_from_reg(ptr, HOST_FEATURES);
-	write_to_reg(ptr, GUEST_FEATURES_SEL, 0);
-	write_to_reg(ptr, GUEST_FEATURES, host_feat | (1 << VIRTIO_F_EVENT_IDX));
+	write_to_reg(ptr, HOST_FEATURES_SEL, 0); //selecionando palavra 0 do hostfeat
+	uint32 host_feat = read_from_reg(ptr, HOST_FEATURES); //lendo as hostfeat
+	write_to_reg(ptr, GUEST_FEATURES_SEL, 0); //selecionando palavra 0 da guest feat
+	write_to_reg(ptr, GUEST_FEATURES, host_feat & ~(1 << VIRTIO_F_EVENT_IDX)); //escrevendo as host feat na guest feat, com a flag de nao notificaçao
+
+	set_bit(ptr, STATUS, STATUS_FEATURES_OK); //set feat ok
+	uint32 feat_ok = read_from_reg(ptr, STATUS) & ~(STATUS_FEATURES_OK);
+	if (!feat_ok){
+		printf("Features negociation failed\n");
+		set_bit(ptr, STATUS, STATUS_FAILED);
+		return 0;
+	}
 
 	//setup device specific
 	write_to_reg(ptr, QUEUE_NUM, QNUM);
@@ -734,18 +759,21 @@ gpu_device* setup_gpu_device(uint64 ptr){
 	device->framebuffer = fb ;//(pixel*)((uint64)fb + num_pages*PAGE_SIZE);
 	device->width = DEVICE_WIDTH;
 	device->height = DEVICE_HEIGHT;
+	
+
 
 	GPU_DEVICE = device;
 	return device;
 }
 
-void transfer(uint32 x, uint32 y, uint32 width, uint32 height){
+void gpu_update(){
 	//*******************************************************************************************//
 	//step 4
 	//transfer to host
 	uint16 head;
 	gpu_ctrl_hdr hdr;
 	gpu_rect rect;
+	set_rect(&rect, 0, 0, DEVICE_WIDTH, DEVICE_HEIGHT);
 	transfer_to_host_2d *transfer = (transfer_to_host_2d*)alloc(1);
 	set_header(
 		&hdr,
@@ -755,7 +783,6 @@ void transfer(uint32 x, uint32 y, uint32 width, uint32 height){
 		0,
 		0
 	);
-	set_rect(&rect, x, y, width+x, height+y);
 	set_transfer_to_host(transfer, hdr, rect, 0, 1, 0);
 	VirtQDescriptor desc_t2h, desc_t2h_response;
 	gpu_ctrl_hdr *response4 = (gpu_ctrl_hdr*)alloc(1);
@@ -793,7 +820,6 @@ void transfer(uint32 x, uint32 y, uint32 width, uint32 height){
 		0,
 		0
 	);
-	set_rect(&rect, x, y, width+x, height+y);
 	set_resource_flush(flush, hdr, rect, 1, 0);
 
 	VirtQDescriptor desc_rf, desc_rf_resp;
@@ -819,7 +845,6 @@ void transfer(uint32 x, uint32 y, uint32 width, uint32 height){
 	GPU_DEVICE->idx = (GPU_DEVICE->idx + 1) % QNUM;
 	GPU_DEVICE->queue->av.ring[GPU_DEVICE->queue->av.index % QNUM] = head;
 	GPU_DEVICE->queue->av.index = (GPU_DEVICE->queue->av.index + 1);
-
 
 	//RUN THE QUEUE
 	write_to_reg(GPU_DEVICE->dev, QUEUE_NOTIFY, 0);

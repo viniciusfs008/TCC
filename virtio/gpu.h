@@ -25,7 +25,7 @@
 #define F_VIRGL 0
 #define F_EDID 	1
 #define FLAG_FENCE (1 << 0)
-#define MAX_SCANOUTS 1
+#define MAX_SCANOUTS 16
 #define RESOURCE_ID 1
 #define TRANSPARENT 0
 
@@ -236,7 +236,7 @@ typedef struct gpu_device{
 */
 gpu_device *setup_gpu_device(uint64 ptr);
 void init_gpu_device(gpu_device *device);
-void transfer(uint32 x, uint32 y, uint32 width, uint32 height);
+void gpu_update();
 void set_rect(gpu_rect *rect, uint32 x, uint32 y, uint32 width, uint32 height);
 
 /*******************FUNCOES PARA SETAR PARAMETROS EM GPU.C ******************************/
