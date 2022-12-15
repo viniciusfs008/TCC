@@ -11,29 +11,112 @@
 extern void mvector(void); // Rotina q salva os registradores em assembly
 extern void msg_syscall(int);
 
+void desenha_basico(){
+        stroke_color(COLOR_RGB(0,0,0));
+        stroke_weigth(5);
+        draw_line(336,46, 78, 382);
+        draw_line(740,390, 834,530);
+        draw_line(740,530, 834,390);
+
+        fill_color(TRANSPARENT);
+        draw_triangle(319,179, 290,429, 599,441);
+        
+        fill_color(COLOR_HEX(0x333333));
+        stroke_color(COLOR_HEX(0x00ff00));
+        draw_triangle(787,239, 681,334, 801,334);
+
+        stroke_weigth(0);
+        fill_color(COLOR_HEX(0x223399));
+        draw_rect(59,466,357,100);
+
+
+        stroke_weigth(8);
+        stroke_color(COLOR_HEX(0x000000));
+        fill_color(COLOR_HEX(0x00ff00));
+        draw_circle(611,580, 70);
+
+        stroke_weigth(0);
+        fill_color(COLOR_HEX(0xff0000));
+        draw_rect(581,121, 100,100);
+        draw_triangle(560,172,700,172,631,100);
+        draw_triangle(560,172,700,172,631,241);
+
+        fill_color(COLOR_HEX(0x223399));
+        draw_string(
+            "ABCDEFGHIJKLMNOPQRSTUVXWYZ\n"
+            "abcdefghijklmnopqrstuvxwyz\n"
+            "0123456789!#$%'()+,-.;=@\"*\n"
+            "/\\:?[]{}",
+            20, 664, 4, 0, 0);
+}
+
+
+void exemplo_linha(){
+    stroke_color(BLACK);
+    stroke_weigth(3);
+    draw_line(20,20, 200,300);
+
+    stroke_weigth(8);
+    draw_line(120,20, 300, 300);
+
+    stroke_color(COLOR_HEX(0x0000ff));
+    draw_line(220,20, 400, 300);
+}
+void exemplo_triangulo(){
+    stroke_weigth(0);
+    stroke_color(BLACK);
+    fill_color(0x00ffff);
+    draw_triangle(20,20, 80, 280, 260, 110);
+    // draw_triangle(20,20, 70, 220, 140,110);
+
+    // stroke_weigth(3);
+    // draw_triangle(220, 20, 270, 220, 340,110);
+
+    // stroke_weigth(7);
+    // fill_color(COLOR_HEX(0xff0000));
+    // stroke_color(COLOR_HEX(0x0000ff));
+    // draw_triangle(420, 20, 470, 220, 540,110);
+}
+void exemplo_retangulo(){
+    stroke_weigth(0);
+    stroke_color(BLACK);
+    fill_color(0x00ffff);
+    draw_rect(20,20, 100,200);
+
+    stroke_weigth(3);
+    draw_rect(160, 20, 100,200);
+
+    stroke_weigth(7);
+    fill_color(COLOR_HEX(0xff0000));
+    stroke_color(COLOR_HEX(0x0000ff));
+    draw_rect(300, 20, 100, 200);
+}
+void exemplo_circulo(){
+    stroke_weigth(0);
+    stroke_color(BLACK);
+    fill_color(0x00ffff);
+    draw_circle(150,150, 100);
+
+    stroke_weigth(3);
+    draw_circle(400, 150, 100);
+
+    stroke_weigth(7);
+    fill_color(COLOR_HEX(0xff0000));
+    stroke_color(COLOR_HEX(0x0000ff));
+    draw_circle(650, 150, 100);
+}
 // No final de entry() o sistema salta para cá no modo-S
 void
 main() {
     // \uXXXX e \UXXXXXXXX são chamados universal-character-name
-    init_game();
+    //init_game();
 
-    bg_color(0xffffffff);
+    bg_color(WHITE);
     while(1){
         clear();
-        fill_color(0xffE20A4A);
-        stroke_color(0xff000000);
-        stroke_weigth(3);
-        draw_triangle(600,600, 800, 100, 300, 400);
-        fill_color(0xff00ffff);
-        draw_circle(200,200,50);
-        stroke_color(0);
-        draw_rect(350,200, 100,50);
-        draw_line(100,500, 600,700);
+        exemplo_triangulo();
 
-
-
-
-        transfer(0,0, DEVICE_WIDTH, DEVICE_HEIGHT);
+        gpu_update();
 
     }
 
