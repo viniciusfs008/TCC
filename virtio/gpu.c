@@ -14,7 +14,6 @@ uint32 STROKE_WEIGHT = 1;
 gpu_device *GPU_DEVICE;
 
 
-
 void place_pixel(int x, int y, uint32 color){
 	if (x < 0 || x >= DEVICE_WIDTH) return;
 	if (y < 0 || y >= DEVICE_HEIGHT) return;
@@ -514,9 +513,7 @@ void init_gpu_device(gpu_device *device){
 	write_to_reg(device->dev, QUEUE_NOTIFY, 0);
 	while(device->queue->av.index != device->queue->used.index);
 
-	print_display_info(resposta_display);
-
-
+	// print_display_info(resposta_display);
 
 	set_header(&hdr, VIRTIO_GPU_CMD_RESOURCE_CREATE_2D, 0, 0, 0, 0);
 	resource_create_2d *res = (resource_create_2d*) alloc(1);
@@ -690,13 +687,13 @@ void init_gpu_device(gpu_device *device){
 	write_to_reg(device->dev, QUEUE_NOTIFY, 0);
 	while(device->queue->av.index != device->queue->used.index);
 
-	for (int i = 0; i < 1024; i++){
-		if (i % 8 == 0){
-			printf("\n%x -- %x\t", i, i + 7);
-		}
-		printf("%x ", resp_edid->edid[i]);
-	}
-	printf("\n\n");
+	// for (int i = 0; i < 1024; i++){
+	// 	if (i % 8 == 0){
+	// 		printf("\n%x -- %x\t", i, i + 7);
+	// 	}
+	// 	printf("%x ", resp_edid->edid[i]);
+	// }
+	// printf("\n\n");
 
 
 }

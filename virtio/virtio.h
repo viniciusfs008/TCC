@@ -66,7 +66,6 @@ typedef enum Virtio_Devices {
 }Device_id;
 
 
-
 typedef struct virtq_descriptor{
 	uint64 address;
 	uint32 length;

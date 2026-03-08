@@ -27,7 +27,6 @@
 #define NEXT_MAX 3
 
 
-uint8 tetrominoes[NUM_OF_TETROMINOS][BLOCKS_PER_TETROMINO];
 typedef enum pieces{ I, Z, S, O, T, L, J, SHADOW, UNAVAILABLE, EMPTY}piece_shape;
 
 typedef struct piece {

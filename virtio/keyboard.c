@@ -5,7 +5,7 @@
 
 #define TOTAL_EVENT_BUFFER 0x40
 
-
+extern static_event_queue av_events_queue;
 keyboard_device KEYBOARD_DEVICE;
 
 void add_q(static_event_queue *q, virtio_input_event e){
@@ -47,7 +47,7 @@ void repopulate_event(uint16 idx){
     uint16 head;
     set_descriptor(
         &desc,
-        &(KEYBOARD_DEVICE.event_buffer[idx]),
+        (uint64)(&(KEYBOARD_DEVICE.event_buffer[idx])),
         sizeof(virtio_input_event),
         VIRTQ_DESC_F_WRITE,
         0
@@ -136,6 +136,7 @@ void keyboard_int(){
             case EV_KEY:
                 if (event->value == 1){
                     av_events_queue.add(&av_events_queue, *event);
+                    printf("Tecla -> %d\n", event->code);
                 }
                 break;
             default:
@@ -158,4 +159,9 @@ void keyboard_int(){
 
     if (!i) printf("NENHUM EVENTO CAPTURADO!!!\n");
 
+}
+
+
+static_event_queue* get_event_queue(){
+    return &av_events_queue;
 }

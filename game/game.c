@@ -12,6 +12,58 @@
 #define FIELD_LINE_WIDTH 2
 
 
+
+//IZSOTLJ
+uint8 tetrominoes[NUM_OF_TETROMINOS][BLOCKS_PER_TETROMINO] = {
+    {
+        0,0,0,0,
+        1,1,1,1,
+        0,0,0,0,
+        0,0,0,0
+    },
+    {
+        1,1,0,0,
+        0,1,1,0,
+        0,0,0,0,
+        0,0,0,0
+    },
+    {
+        0,1,1,0,
+        1,1,0,0,
+        0,0,0,0,
+        0,0,0,0
+    },
+    {
+        0,0,0,0,
+        0,1,1,0,
+        0,1,1,0,
+        0,0,0,0
+    },
+    {
+        0,1,0,0,
+        1,1,1,0,
+        0,0,0,0,
+        0,0,0,0
+    },
+    {
+        0,0,1,0,
+        1,1,1,0,
+        0,0,0,0,
+        0,0,0,0
+    },
+    {
+        1,0,0,0,
+        1,1,1,0,
+        0,0,0,0,
+        0,0,0,0
+    }
+
+};
+
+
+
+static_event_queue *av_events_queue;
+
 uint32 block_colors [9][6]= {
 	//alpha		   dark out    			inside        			dark inside    			4 points    			light inside
 	{ TRANSPARENT, COLOR_HEX(0x0097a7), COLOR_HEX(0x00e5ff),   COLOR_HEX(0x00838f), 	COLOR_HEX(0x90caf9), COLOR_HEX(0x84ffff) }, //I light blue
@@ -284,52 +336,6 @@ struct GAME{
 
 
 
-//IZSOTLJ
-uint8 tetrominoes[NUM_OF_TETROMINOS][BLOCKS_PER_TETROMINO] = {
-    {
-        0,0,0,0,
-        1,1,1,1,
-        0,0,0,0,
-        0,0,0,0
-    },
-    {
-        1,1,0,0,
-        0,1,1,0,
-        0,0,0,0,
-        0,0,0,0
-    },
-    {
-        0,1,1,0,
-        1,1,0,0,
-        0,0,0,0,
-        0,0,0,0
-    },
-    {
-        0,0,0,0,
-        0,1,1,0,
-        0,1,1,0,
-        0,0,0,0
-    },
-    {
-        0,1,0,0,
-        1,1,1,0,
-        0,0,0,0,
-        0,0,0,0
-    },
-    {
-        0,0,1,0,
-        1,1,1,0,
-        0,0,0,0,
-        0,0,0,0
-    },
-    {
-        1,0,0,0,
-        1,1,1,0,
-        0,0,0,0,
-        0,0,0,0
-    }
-
-};
 
 
 /*
@@ -556,8 +562,8 @@ void reset_game(){
 
 void treat_keys(){
     virtio_input_event event;
-    while(!av_events_queue.empty){
-        event = av_events_queue.get_event(&av_events_queue);
+    while(!av_events_queue->empty){
+        event = av_events_queue->get_event(&av_events_queue);
         switch (game.state){
             case MENU:
                 if (event.code == KEY_ENTER){
@@ -882,6 +888,8 @@ void game_loop(){
 //funcao responsavel por inicializar as variaveis do jogo
 void init_game(){
     uint8 num_pages = 1 + (FIELD_HEIGHT*FIELD_WIDTH)/PAGE_SIZE;
+
+    av_events_queue = get_event_queue();
 
     game.state = MENU;
     game.has_switched = false;

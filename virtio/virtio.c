@@ -6,6 +6,7 @@
 #include "gpu.h"
 #include "rng.h"
 #include "keyboard.h"
+#include "block.h"
 
 Device_id map_irqs[8] = {
     NO_DEVICE,
@@ -54,7 +55,7 @@ void virtio_probe() {
     uint32 *ptr;
     uint32 magicvalue;
     uint32 deviceid;
-    int irq;
+    int irq_index;
     printf(CR);
     for(addr = VIRTIO_START; addr <= VIRTIO_END; addr += VIRTIO_STRIDE) {
         printf("Sondando endereço VIRTIO %p ...\n", (uint64*) addr);
@@ -64,7 +65,7 @@ void virtio_probe() {
         deviceid = read_from_reg(addr, DEVICE_ID);
         // Se o dispositov está conectado o deslocamento 0x000 contém o número
         // 0x74_72_69_76
-        irq = (addr >> 12 & 0xf) - 1;
+        irq_index = (addr >> 12 & 0xf) - 1;
 
         if (magicvalue != VIRTIO_MAGIC) {
             printf("Dispositivo virtio não encontrado \n");
@@ -73,7 +74,7 @@ void virtio_probe() {
             printf( INDIAN_RED "\tDispositivo não conectado\n" CR);
         }
         else {
-            map_irqs[irq] = deviceid;
+            map_irqs[irq_index] = deviceid;
             switch(deviceid) {
                 case ENTROPY_DEVICE_ID:
                     printf(
@@ -91,6 +92,14 @@ void virtio_probe() {
                 case INPUT_DEVICE_ID:
                     printf(LIGHT_SEA_GREEN "\tDispositivo de Entrada encontrado\n" CR);
                     setup_input_device(addr);
+                    break;
+                case BLOCK_DEVICE_ID:
+                    printf(LIGHT_SEA_GREEN "\tDispositivo de bloco encontrado\n" CR);
+                    int teste = setup_block_device(addr);
+                    if (teste == true)
+                        printf("DEU CERTO🥹");
+                    else
+                        printf("DEU ERRADO😵");
                     break;
                 default:
                     printf("Dispositivo virtio não identificado foi encontrado\n");
@@ -118,6 +127,9 @@ void handle_virt_int(int irq){
         case ENTROPY_DEVICE_ID:
             //printf("ENTROPY\n");
             break;
+        case BLOCK_DEVICE_ID:
+            printf("BLOCO\n");
+            break;           
         default:
             printf("DISPOSITIVO VIRTIO DESCONHECIDO\n");
             break;

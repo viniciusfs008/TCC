@@ -26,7 +26,7 @@ extern char stack_end[];
 
 
 long total_pages;
-long alloc_start; 
+long alloc_start;
 uint64 *kernel_pagetable;
 uint64 *kernel_heap; //Sem uso. Remover
 TrapFrame trap_frame[NCPU]; // Um TF por CPU

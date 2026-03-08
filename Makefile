@@ -14,7 +14,9 @@ SCRIPT = -Tkernel.ld
 
 FLAGS+=-mcmodel=medany
 # pedantic: gera o diagnóstico descrito pelo padrão C89 da linguagem C
-FLAGS += -Wall -Wextra -pedantic -O0 -g
+# comentei para não ter warnings
+# FLAGS += -Wall -Wextra -pedantic -O0 -g
+FLAGS += -w -O0 -g
 FLAGS += -march=rv64gc -mabi=lp64
 FLAGS += -ffreestanding
 LDFLAGS += -nostdlib 
@@ -30,7 +32,7 @@ RANDOM = virtio-rng-device
 GPU = virtio-gpu-device
 KEYBOARD = virtio-keyboard-device
 
-RAM = 2G
+RAM = 0.5G
 # '\' é continuação da linha
 OBJ = \
 	boot.o \
@@ -53,6 +55,7 @@ OBJ = \
 	keyboard.o \
 	math.o \
 	time.o \
+	block.o \
 	algorithms.o
 #static pattern rules (http://web.mit.edu/gnu/doc/html/make_4.html#SEC37)
 # $@ e $< são variáveis automáticas 	
@@ -75,11 +78,12 @@ kernel: $(OBJ)
 	$(LD) $(LDFLAGS) $(SCRIPT) -o $@  $(OBJ)
 
 run: kernel
-	$(QEMU) -append 'console=ttyS0' -serial mon:stdio -display vnc=127.0.0.1:0 \
+	$(QEMU) -append 'console=ttyS0' -serial mon:stdio -display vnc=127.0.0.1:5000 \
 	-bios none \
 	-cpu rv64 \
 	-smp $(NCPU) \
 	-machine virt -m $(RAM) \
+	-drive $(DRIVE) -device $(HDD) \
 	-device $(RANDOM) \
 	-device $(GPU) \
 	-device $(KEYBOARD) \

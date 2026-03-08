@@ -108,20 +108,21 @@ void exemplo_circulo(){
 // No final de entry() o sistema salta para cá no modo-S
 void
 main() {
+    printf("alooooo\n");
     // \uXXXX e \UXXXXXXXX são chamados universal-character-name
-    //init_game();
+    // init_game();
 
-    bg_color(WHITE);
-    while(1){
-        clear();
-        exemplo_triangulo();
+    // bg_color(WHITE);
+    // while(1){
+    //     clear();
+    //     exemplo_triangulo();
 
-        gpu_update();
+    //     gpu_update();
 
-    }
+    // }
 
 
-    for(;;);
+    // for(;;);
 }
 
 // boot.s salta para cá no modo máquina (M-Mode)
@@ -174,8 +175,13 @@ entry() {
     printf("Descoberta de dispositivos...\n");
     virtio_probe();
 
-    
-    asm volatile("mret"); // retorna para a função main no modo-S
+    // bg_color(WHITE);
+    // while(1){
+    //     clear();
+    //     exemplo_triangulo();
+    //     gpu_update();
+    // }
+    // asm volatile("mret"); // retorna para a função main no modo-S
 }
 
 void

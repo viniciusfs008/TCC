@@ -1,12 +1,7 @@
 #ifndef KEYBOARD_H
 #define KEYBOARD_H
 
-
 #include "virtio.h"
-
-
-
-
 
 void setup_input_device(uint64 addr);
 
@@ -48,14 +43,11 @@ typedef struct virtio_input_config {
     } u; 
 }virtio_input_config;
 
-
 typedef struct virtio_input_event { 
     uint16 type; 
     uint16 code; 
     uint32 value;
 }virtio_input_event;
-
-
 
 typedef struct keyboard_device{
     uint64 address;
@@ -67,7 +59,6 @@ typedef struct keyboard_device{
     uint16 event_buffer_idx;
 }keyboard_device;
 
-
 #define EVENT_QUEUE_SIZE 20
 
 typedef struct static_event_queue{
@@ -78,8 +69,9 @@ typedef struct static_event_queue{
     virtio_input_event (*get_event)(struct static_event_queue*);
 }static_event_queue;
 
-static_event_queue av_events_queue;
 void keyboard_int();
+
+static_event_queue* get_event_queue();
 
 
 #endif
