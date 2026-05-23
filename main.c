@@ -109,6 +109,12 @@ void exemplo_circulo(){
 void
 main() {
     printf("alooooo\n");
+
+    // Exemplo de teste de leitura do setor 0
+    uint8 buffer[512];
+    printf("Testando leitura do disco...\n");
+    block_op(1, buffer, 512, 0, false); // Lê 512 bytes do offset 0 do dispositivo 1
+    printf("Leitura finalizada! Primeiro byte: %x\n", buffer[0]);
     // \uXXXX e \UXXXXXXXX são chamados universal-character-name
     // init_game();
 
@@ -121,8 +127,7 @@ main() {
 
     // }
 
-
-    // for(;;);
+    for(;;);
 }
 
 // boot.s salta para cá no modo máquina (M-Mode)
@@ -181,7 +186,7 @@ entry() {
     //     exemplo_triangulo();
     //     gpu_update();
     // }
-    // asm volatile("mret"); // retorna para a função main no modo-S
+    asm volatile("mret"); // retorna para a função main no modo-S
 }
 
 void

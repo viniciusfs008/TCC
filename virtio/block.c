@@ -116,49 +116,50 @@ void block_op(uint32 dev, void *buffer, uint32 size, uint64 offset, int write) {
     // Calcula o setor baseado no offset
     uint64 sector = offset / 512;
 
-    // Aloca a estrutura de requisição
-    Request *blk_request = (Request *) alloc(sizeof(Request));
+    // Aloca a estrutura de requisição (1 página é o suficiente)
+    Request *blk_request = (Request *) alloc(1);
 
     // Configura a requisição
     blk_request->header.sector = sector;
     blk_request->header.blktype = write ? VIRTIO_BLK_T_OUT : VIRTIO_BLK_T_IN;
     blk_request->header.reserved = 0;
     blk_request->status.status = 111; // Marcador para indicar pendência
-    blk_request->data.data = buffer;
-
-    // Configura descritor do cabeçalho
-    VirtQDescriptor desc_header;
-    set_descriptor(&desc_header, (uint64) &blk_request->header, sizeof(blk_request->header),
-                   VIRTQ_DESC_F_NEXT, 0);
-
-    // Configura descritor dos dados
-    VirtQDescriptor desc_data;
-    set_descriptor(&desc_data, (uint64) buffer, size,
-                   VIRTQ_DESC_F_NEXT | (write ? 0 : VIRTQ_DESC_F_WRITE), 0);
-
-    // Configura descritor do status
-    VirtQDescriptor desc_status;
-    set_descriptor(&desc_status, (uint64) &blk_request->status, sizeof(blk_request->status),
-                   VIRTQ_DESC_F_WRITE, 0);
 
     // Adiciona os descritores à fila do dispositivo
     uint32 head = bdev->idx;
-    bdev->queue->desc[head] = desc_header;
-    bdev->idx = (bdev->idx + 1) % QNUM;
-    bdev->queue->desc[bdev->idx] = desc_data;
-    bdev->idx = (bdev->idx + 1) % QNUM;
-    bdev->queue->desc[bdev->idx] = desc_status;
-    bdev->idx = (bdev->idx + 1) % QNUM;
+    uint32 next_idx;
 
-    // Adiciona à fila de requisições
+    // 1. Descritor do cabeçalho
+    next_idx = (bdev->idx + 1) % QNUM;
+    set_descriptor(&bdev->queue->desc[bdev->idx], (uint64) &blk_request->header, sizeof(blk_request->header),
+                   VIRTQ_DESC_F_NEXT, next_idx);
+    bdev->idx = next_idx;
+
+    // 2. Descritor dos dados
+    next_idx = (bdev->idx + 1) % QNUM;
+    set_descriptor(&bdev->queue->desc[bdev->idx], (uint64) buffer, size,
+                   VIRTQ_DESC_F_NEXT | (write ? 0 : VIRTQ_DESC_F_WRITE), next_idx);
+    bdev->idx = next_idx;
+
+    // 3. Descritor do status
+    next_idx = (bdev->idx + 1) % QNUM;
+    set_descriptor(&bdev->queue->desc[bdev->idx], (uint64) &blk_request->status, sizeof(blk_request->status),
+                   VIRTQ_DESC_F_WRITE, 0); // Fim da cadeia
+    bdev->idx = next_idx;
+
+    // Adiciona o cabeçalho (head) ao anel disponível (Available Ring)
     bdev->queue->av.ring[bdev->queue->av.index % QNUM] = head;
     bdev->queue->av.index++;
 
     // Notifica o dispositivo sobre a requisição
     write_to_reg(bdev->dev, QUEUE_NOTIFY, 0);
 
-    // Espera o dispositivo processar (pode ser substituído por interrupção)
-    while (bdev->queue->av.index != bdev->queue->used.index);
+    // Espera o dispositivo processar comparando o índice do anel 'used'
+    // O dispositivo incrementa bdev->queue->used.index quando completa uma requisição
+    while (bdev->ack_used_idx == bdev->queue->used.index);
+    
+    // Atualiza nosso índice de reconhecimento
+    bdev->ack_used_idx++;
 
     // Libera a memória da requisição
     dealloc(blk_request);
