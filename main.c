@@ -7,6 +7,7 @@
 #include "virtio/gpu.h"
 #include "libs/math.h"
 #include "virtio/rng.h"
+#include "filesystems/minix.h"
 
 extern void mvector(void); // Rotina q salva os registradores em assembly
 extern void msg_syscall(int);
@@ -106,15 +107,20 @@ void exemplo_circulo(){
     draw_circle(650, 150, 100);
 }
 // No final de entry() o sistema salta para cá no modo-S
-void
-main() {
-    printf("alooooo\n");
+void main() {
+    // Teste do Filesystem Minix 3
+    MinixSuperBlock sb;
+    if (minix_read_superblock(1, &sb)) {
+        printf("[Minix3] Superbloco OK! Magic: 0x%x\n", sb.magic);
+        printf("[Minix3] Total de inodes: %d\n", sb.ninodes);
+        printf("[Minix3] Tamanho do bloco: %d\n", sb.block_size);
 
-    // Exemplo de teste de leitura do setor 0
-    uint8 buffer[512];
-    printf("Testando leitura do disco...\n");
-    block_op(1, buffer, 512, 0, false); // Lê 512 bytes do offset 0 do dispositivo 1
-    printf("Leitura finalizada! Primeiro byte: %x\n", buffer[0]);
+        // Imprime a árvore de diretórios começando do Inode Raiz (1)
+        printf("\n[Minix3] Árvore de Diretórios:\n");
+        minix_print_tree(1, &sb, 1, 0, "/");
+    } else {
+        printf("[Minix3] Falha ao ler superbloco.\n");
+    }
     // \uXXXX e \UXXXXXXXX são chamados universal-character-name
     // init_game();
 

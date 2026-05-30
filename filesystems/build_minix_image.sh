@@ -64,7 +64,7 @@ sudo mount -o loop -t minix "$IMG_NAME" "$MOUNT_POINT"
 # ==============================
 
 echo "[4/5] Copiando arquivos de $SRC_DIR..."
-sudo cp -r "$SRC_DIR"/* "$MOUNT_POINT"/
+sudo cp -rv "$SRC_DIR"/. "$MOUNT_POINT"/
 
 # ==============================
 

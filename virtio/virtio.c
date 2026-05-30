@@ -95,11 +95,7 @@ void virtio_probe() {
                     break;
                 case BLOCK_DEVICE_ID:
                     printf(LIGHT_SEA_GREEN "\tDispositivo de bloco encontrado\n" CR);
-                    int teste = setup_block_device(addr);
-                    if (teste == true)
-                        printf("DEU CERTO🥹");
-                    else
-                        printf("DEU ERRADO😵");
+                    setup_block_device(addr);
                     break;
                 default:
                     printf("Dispositivo virtio não identificado foi encontrado\n");
@@ -128,7 +124,7 @@ void handle_virt_int(int irq){
             //printf("ENTROPY\n");
             break;
         case BLOCK_DEVICE_ID:
-            printf("BLOCO\n");
+            // printf("BLOCO\n");
             break;           
         default:
             printf("DISPOSITIVO VIRTIO DESCONHECIDO\n");

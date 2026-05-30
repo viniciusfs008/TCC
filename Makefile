@@ -56,7 +56,8 @@ OBJ = \
 	math.o \
 	time.o \
 	block.o \
-	algorithms.o
+	algorithms.o \
+	minix.o
 #static pattern rules (http://web.mit.edu/gnu/doc/html/make_4.html#SEC37)
 # $@ e $< são variáveis automáticas 	
 %.o: %.c
@@ -72,6 +73,9 @@ OBJ = \
 	$(GCC) $(FLAGS) -c -o $@ $<	
 
 %.o: libs/%.c
+	$(GCC) $(FLAGS) -c -o $@ $<	
+
+%.o: filesystems/%.c
 	$(GCC) $(FLAGS) -c -o $@ $<	
 
 kernel: $(OBJ)
