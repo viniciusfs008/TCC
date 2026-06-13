@@ -62,7 +62,7 @@ uint8 tetrominoes[NUM_OF_TETROMINOS][BLOCKS_PER_TETROMINO] = {
 
 
 
-static_event_queue *av_events_queue;
+static_event_queue *game_events_queue;
 
 uint32 block_colors [9][6]= {
 	//alpha		   dark out    			inside        			dark inside    			4 points    			light inside
@@ -562,8 +562,8 @@ void reset_game(){
 
 void treat_keys(){
     virtio_input_event event;
-    while(!av_events_queue->empty){
-        event = av_events_queue->get_event(&av_events_queue);
+    while(!game_events_queue->empty){
+        event = game_events_queue->get_event(game_events_queue);
         switch (game.state){
             case MENU:
                 if (event.code == KEY_ENTER){
@@ -889,7 +889,7 @@ void game_loop(){
 void init_game(){
     uint8 num_pages = 1 + (FIELD_HEIGHT*FIELD_WIDTH)/PAGE_SIZE;
 
-    av_events_queue = get_event_queue();
+    game_events_queue = get_event_queue();
 
     game.state = MENU;
     game.has_switched = false;

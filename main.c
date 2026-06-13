@@ -8,6 +8,8 @@
 #include "libs/math.h"
 #include "virtio/rng.h"
 #include "filesystems/minix.h"
+#include "shell.h"
+
 
 extern void mvector(void); // Rotina q salva os registradores em assembly
 extern void msg_syscall(int);
@@ -115,9 +117,8 @@ void main() {
         printf("[Minix3] Total de inodes: %d\n", sb.ninodes);
         printf("[Minix3] Tamanho do bloco: %d\n", sb.block_size);
 
-        // Imprime a árvore de diretórios começando do Inode Raiz (1)
-        printf("\n[Minix3] Árvore de Diretórios:\n");
-        minix_print_tree(1, &sb, 1, 0, "/");
+        // Inicia o shell iterativo do usuario
+        shell_run(1, &sb);
     } else {
         printf("[Minix3] Falha ao ler superbloco.\n");
     }

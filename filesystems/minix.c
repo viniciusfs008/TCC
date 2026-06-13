@@ -11,7 +11,7 @@
 // Retorna 1 se o magic for válido, 0 caso contrário.
 // ============================
 int minix_read_superblock(uint32 dev, MinixSuperBlock *sb) {
-    block_op(dev, (uint8 *) sb, BLOCK_SIZE, BLOCK_SIZE, 0);
+    block_op(dev, (uint8 *) sb, MINIX_BLOCK_SIZE, MINIX_BLOCK_SIZE, 0);
     if (sb->magic != MINIX3_MAGIC) {
         printf("minix: magic inválido (lido: 0x%x, esperado: 0x%x)\n",
                sb->magic, MINIX3_MAGIC);
@@ -42,11 +42,11 @@ int minix_read_inode(uint32 dev, MinixSuperBlock *sb, uint32 inode_num, MinixIno
     // Calcula o offset do bloco que contém este inode
     uint32 inode_table_block = 2 + sb->imap_blocks + sb->zmap_blocks;
     uint32 bloco = inode_table_block + (inode_num - 1) / INODES_PER_BLOCK;
-    uint32 offset_disco = bloco * BLOCK_SIZE;
+    uint32 offset_disco = bloco * MINIX_BLOCK_SIZE;
 
     // Lê o bloco inteiro (contém 16 inodes)
     MinixInode bloco_inodes[INODES_PER_BLOCK];
-    block_op(dev, (uint8 *) bloco_inodes, BLOCK_SIZE, offset_disco, 0);
+    block_op(dev, (uint8 *) bloco_inodes, MINIX_BLOCK_SIZE, offset_disco, 0);
 
     // Extrai o inode específico dentro do bloco
     uint32 idx = (inode_num - 1) % INODES_PER_BLOCK;
@@ -78,20 +78,20 @@ uint32 minix_read_file(uint32 dev, MinixSuperBlock *sb, MinixInode *inode,
 
     // Calcula em qual bloco do arquivo começa a leitura e
     // o byte de deslocamento dentro desse bloco
-    uint32 bloco_inicial = offset / BLOCK_SIZE;
-    uint32 byte_offset   = offset % BLOCK_SIZE;
+    uint32 bloco_inicial = offset / MINIX_BLOCK_SIZE;
+    uint32 byte_offset   = offset % MINIX_BLOCK_SIZE;
 
-    uint8 bloco_buf[BLOCK_SIZE];
+    uint8 bloco_buf[MINIX_BLOCK_SIZE];
 
     // ---- Zonas diretas (zones[0..6]) ----
     for (uint32 i = 0; i < 7 && bytes_lidos < size; i++) {
         if (i < bloco_inicial) continue;  // Ainda não chegamos no bloco de início
         if (inode->zones[i] == 0) break;  // Zona não alocada: fim dos dados
 
-        block_op(dev, bloco_buf, BLOCK_SIZE, inode->zones[i] * BLOCK_SIZE, 0);
+        block_op(dev, bloco_buf, MINIX_BLOCK_SIZE, inode->zones[i] * MINIX_BLOCK_SIZE, 0);
 
         uint32 inicio = (i == bloco_inicial) ? byte_offset : 0;
-        uint32 fim    = BLOCK_SIZE;
+        uint32 fim    = MINIX_BLOCK_SIZE;
         uint32 a_copiar = fim - inicio;
 
         if (bytes_lidos + a_copiar > size)
@@ -107,7 +107,7 @@ uint32 minix_read_file(uint32 dev, MinixSuperBlock *sb, MinixInode *inode,
     if (bytes_lidos < size && inode->zones[7] != 0) {
         // Lê o bloco de ponteiros (256 × uint32)
         uint32 ponteiros[PTRS_PER_BLOCK];
-        block_op(dev, (uint8 *) ponteiros, BLOCK_SIZE, inode->zones[7] * BLOCK_SIZE, 0);
+        block_op(dev, (uint8 *) ponteiros, MINIX_BLOCK_SIZE, inode->zones[7] * MINIX_BLOCK_SIZE, 0);
 
         for (uint32 i = 0; i < PTRS_PER_BLOCK && bytes_lidos < size; i++) {
             uint32 bloco_abs = i + 7;  // Posição absoluta no arquivo (bloco 7, 8, ...)
@@ -115,10 +115,10 @@ uint32 minix_read_file(uint32 dev, MinixSuperBlock *sb, MinixInode *inode,
             if (bloco_abs < bloco_inicial) continue;
             if (ponteiros[i] == 0) break;
 
-            block_op(dev, bloco_buf, BLOCK_SIZE, ponteiros[i] * BLOCK_SIZE, 0);
+            block_op(dev, bloco_buf, MINIX_BLOCK_SIZE, ponteiros[i] * MINIX_BLOCK_SIZE, 0);
 
             uint32 inicio = (bloco_abs == bloco_inicial) ? byte_offset : 0;
-            uint32 a_copiar = BLOCK_SIZE - inicio;
+            uint32 a_copiar = MINIX_BLOCK_SIZE - inicio;
 
             if (bytes_lidos + a_copiar > size)
                 a_copiar = size - bytes_lidos;
@@ -161,10 +161,10 @@ void minix_print_tree(uint32 dev, MinixSuperBlock *sb, uint32 inode_num, int dep
         // de estruturas MinixDirEntry
         uint32 read_bytes = 0;
         uint32 offset = 0;
-        uint8 buf[BLOCK_SIZE];
+        uint8 buf[MINIX_BLOCK_SIZE];
 
         while (offset < inode.size) {
-            uint32 chunk = minix_read_file(dev, sb, &inode, buf, BLOCK_SIZE, offset);
+            uint32 chunk = minix_read_file(dev, sb, &inode, buf, MINIX_BLOCK_SIZE, offset);
             if (chunk == 0) break; // Terminou o arquivo
 
             int dir_entries = chunk / DIRENTRY_SIZE;

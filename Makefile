@@ -57,6 +57,7 @@ OBJ = \
 	time.o \
 	block.o \
 	algorithms.o \
+	shell.o \
 	minix.o
 #static pattern rules (http://web.mit.edu/gnu/doc/html/make_4.html#SEC37)
 # $@ e $< são variáveis automáticas 	
@@ -82,7 +83,7 @@ kernel: $(OBJ)
 	$(LD) $(LDFLAGS) $(SCRIPT) -o $@  $(OBJ)
 
 run: kernel
-	$(QEMU) -append 'console=ttyS0' -serial mon:stdio -display vnc=127.0.0.1:5000 \
+	$(QEMU) -append 'console=ttyS0' -serial mon:stdio -display vnc=0.0.0.0:1 \
 	-bios none \
 	-cpu rv64 \
 	-smp $(NCPU) \

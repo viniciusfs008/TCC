@@ -62,8 +62,7 @@ void printuns(unsigned int val){
     }
 }
 
-void
-printlng(long val, int base) {
+void printlng(long val, int base) {
     long l;
     int i = 0;
     char s[66]; // !!! Para base 2, um long ocupa 64 bits. Para cada bit, 1 caracter, além do '0b' inicial
@@ -116,7 +115,6 @@ void printptr(uint64 *ptr){
    }
 }
 
-
 void printunsl(uint64 val){
     char s[64];
     int i = 0;
@@ -131,8 +129,6 @@ void printunsl(uint64 val){
         uartputc(s[--i]);
     }
 }
-
-
 
 void printf(char *s, ...){
     va_list ap; // argument pointer 
@@ -195,9 +191,7 @@ void printf(char *s, ...){
     }
 }
 
-void
-panic(char *s) {
+void panic(char *s) {
     printf("\u2671 panic - %s\n", s);
-    for(;;)
-    ;
+    for(;;);
 }

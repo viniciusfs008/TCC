@@ -4,17 +4,20 @@
 #include "../types.h"
 
 #define MINIX3_MAGIC    0x4d5a
-#define BLOCK_SIZE      1024
+#define MINIX_BLOCK_SIZE      1024
 #define INODE_SIZE      64
-#define INODES_PER_BLOCK (BLOCK_SIZE / INODE_SIZE)  // 16
+#define INODES_PER_BLOCK (MINIX_BLOCK_SIZE / INODE_SIZE)  // 16
 #define DIRENTRY_SIZE   64
-#define DIRENTRIES_PER_BLOCK (BLOCK_SIZE / DIRENTRY_SIZE)  // 16
-#define PTRS_PER_BLOCK  (BLOCK_SIZE / 4)            // 256 ponteiros por bloco indireto
+#define DIRENTRIES_PER_BLOCK (MINIX_BLOCK_SIZE / DIRENTRY_SIZE)  // 16
+#define PTRS_PER_BLOCK  (MINIX_BLOCK_SIZE / 4)            // 256 ponteiros por bloco indireto
 
-// Tipos de arquivo (campo mode do inode)
-#define S_IFMT   0170000
-#define S_IFDIR  0040000
-#define S_IFREG  0100000
+// Máscaras do campo `mode` do inode, seguindo o padrão POSIX.
+// O campo mode de 16 bits combina permissões (rwxrwxrwx) e tipo de arquivo.
+// S_IFMT isola apenas os bits de tipo (os 4 bits mais significativos).
+// Uso: (inode.mode & S_IFMT) == S_IFDIR
+#define S_IFMT   0170000    // Máscara para extrair o TIPO do arquivo (bits 12-15)
+#define S_IFDIR  0040000    // Diretório  
+#define S_IFREG  0100000    // Arquivo regular/comum 
 
 // ============================
 // Superbloco do Minix 3

@@ -5,7 +5,7 @@
 
 #define TOTAL_EVENT_BUFFER 0x40
 
-extern static_event_queue av_events_queue;
+static_event_queue av_events_queue;
 keyboard_device KEYBOARD_DEVICE;
 
 void add_q(static_event_queue *q, virtio_input_event e){
