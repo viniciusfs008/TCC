@@ -3,13 +3,13 @@
 
 #include "../types.h"
 
-#define MINIX3_MAGIC    0x4d5a
-#define MINIX_BLOCK_SIZE      1024
-#define INODE_SIZE      64
-#define INODES_PER_BLOCK (MINIX_BLOCK_SIZE / INODE_SIZE)  // 16
-#define DIRENTRY_SIZE   64
-#define DIRENTRIES_PER_BLOCK (MINIX_BLOCK_SIZE / DIRENTRY_SIZE)  // 16
-#define PTRS_PER_BLOCK  (MINIX_BLOCK_SIZE / 4)            // 256 ponteiros por bloco indireto
+#define MINIX3_MAGIC            0x4d5a
+#define MINIX_BLOCK_SIZE        1024
+#define INODE_SIZE              64
+#define INODES_PER_BLOCK        (MINIX_BLOCK_SIZE / INODE_SIZE)  // 16
+#define DIRENTRY_SIZE           64
+#define DIRENTRIES_PER_BLOCK    (MINIX_BLOCK_SIZE / DIRENTRY_SIZE)  // 16
+#define PTRS_PER_BLOCK          (MINIX_BLOCK_SIZE / 4)            // 256 ponteiros por bloco indireto
 
 // Máscaras do campo `mode` do inode, seguindo o padrão POSIX.
 // O campo mode de 16 bits combina permissões (rwxrwxrwx) e tipo de arquivo.
