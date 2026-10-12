@@ -55,8 +55,8 @@ typedef struct MinixInode {
     uint32 zones[10];   // Ponteiros para zonas de dados:
                         //   zones[0..6]: diretas (7 blocos × 1024 = 7 KB)
                         //   zones[7]:    indireta simples (256 ponteiros → 256 KB)
-                        //   zones[8]:    duplamente indireta
-                        //   zones[9]:    triplamente indireta
+                        //   zones[8]:    duplamente indireta (256² ponteiros → 64 MB)
+                        //   zones[9]:    triplamente indireta (256³ ponteiros → 16 GB)
 } MinixInode;
 
 // ============================

@@ -7,12 +7,12 @@ STACK_END: .dword stack_end
 .section .text
 
 .global _start
-.equ STACK_SIZE, 0x1000           # tamanho da pilha por CPU (4096 bytes)
+.equ STACK_SIZE, 0x4000           # tamanho da pilha por CPU (16 KiB)
 
 _start:
     # setup stacks per hart
     csrr t0, mhartid            # obtém o ID do hart atual
-    li a0, STACK_SIZE           # carrega o valor 4096 para a0
+    li a0, STACK_SIZE           # carrega o tamanho da pilha (16 KiB) para a0
     mul t1, t0, a0
     la sp, stack_end                
     sub sp, sp, t1              # define o endereço da pilha para o hart atual

@@ -82,7 +82,27 @@ OBJ = \
 kernel: $(OBJ)
 	$(LD) $(LDFLAGS) $(SCRIPT) -o $@  $(OBJ)
 
-run: kernel
+# Imagem Minix gerada a partir de filesystems/Arquivos.
+# Só é refeita quando algum arquivo da pasta (ou o script) muda.
+# A imagem é montada no /tmp da VM e depois copiada, porque o loop mount
+# pode falhar dentro de uma pasta compartilhada do Multipass.
+IMG_DIR = filesystems/Arquivos
+IMG_SCRIPT = filesystems/build_minix_image.sh
+IMG_TMP = /tmp/roncador_minix.img
+
+ifneq ($(wildcard $(IMG_DIR)),)
+$(DISK): $(IMG_SCRIPT) $(shell find $(IMG_DIR) 2>/dev/null)
+	bash $(IMG_SCRIPT) $(IMG_DIR) $(IMG_TMP)
+	cp $(IMG_TMP) $(DISK)
+	rm -f $(IMG_TMP)
+endif
+
+# Força a recriação da imagem mesmo sem mudanças
+disk:
+	rm -f $(DISK)
+	$(MAKE) $(DISK)
+
+run: kernel $(DISK)
 	$(QEMU) -append 'console=ttyS0' -serial mon:stdio -display vnc=0.0.0.0:1 \
 	-bios none \
 	-cpu rv64 \
@@ -99,6 +119,8 @@ debug: kernel
 	-device $(GPU) \
 	-device $(KEYBOARD) \
 	-gdb tcp::1234 -S -kernel kernel
+.PHONY: run debug clean disk
+
 clean: 
 	rm -rf kernel
 	rm -rf *.o

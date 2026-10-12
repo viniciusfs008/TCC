@@ -89,6 +89,64 @@ uint32 find_inode_by_name(uint32 dev, MinixSuperBlock *sb, uint32 dir_inode_num,
 
 
 // ==============================================================
+// resolve_path
+// Percorre um caminho como "/teste2/teste2.txt" ou "../teste2" componente
+// por componente, chamando find_inode_by_name em cada diretório.
+// Caminhos começando com '/' partem da raiz (inode 1); os demais partem
+// de `start_inode` (o diretório atual).
+// Se `path_out` não for nulo, recebe o caminho absoluto normalizado
+// (com "." e ".." já resolvidos). Ele só é alterado em caso de sucesso.
+// Retorna o inode final, ou 0 se algum componente não existir.
+// ==============================================================
+uint32 resolve_path(uint32 dev, MinixSuperBlock *sb, uint32 start_inode,
+                    const char *path, char *path_out) {
+    uint32 inode = (path[0] == '/') ? 1 : start_inode;
+
+    char new_path[128];
+    if (path[0] == '/' || path_out == 0) strcpy(new_path, "/");
+    else strcpy(new_path, path_out);
+
+    char name[60];
+    while (*path) {
+        // Pula as barras entre componentes ("a//b" equivale a "a/b")
+        while (*path == '/') path++;
+        if (*path == '\0') break;
+
+        // Copia o próximo componente até a barra ou o fim da string
+        int len = 0;
+        while (path[len] != '/' && path[len] != '\0') {
+            if (len >= (int) sizeof(name) - 1) return 0;  // Nome longo demais
+            name[len] = path[len];
+            len++;
+        }
+        name[len] = '\0';
+        path += len;
+
+        inode = find_inode_by_name(dev, sb, inode, name);
+        if (inode == 0) return 0;
+
+        // Atualiza a representação textual do caminho
+        if (strcmp(name, ".") == 0) {
+            // Continua no mesmo diretório
+        } else if (strcmp(name, "..") == 0) {
+            // Apaga o último componente (na raiz não faz nada)
+            int l = strlen(new_path);
+            while (l > 1 && new_path[l-1] != '/') l--;
+            if (l > 1) l--;
+            new_path[l] = '\0';
+        } else {
+            if (strlen(new_path) + len + 2 > sizeof(new_path)) return 0;
+            if (new_path[strlen(new_path) - 1] != '/') strcat(new_path, "/");
+            strcat(new_path, name);
+        }
+    }
+
+    if (path_out != 0) strcpy(path_out, new_path);
+    return inode;
+}
+
+
+// ==============================================================
 // shell_run
 // Lógica de loop infinito onde interpretamos o CLI em formato de árvore parecida
 // com linux, processando ls, cd, cat, tree, game ou help
@@ -149,65 +207,39 @@ void shell_run(uint32 dev, MinixSuperBlock *sb) {
         }
 
         // Comando 2: 'cd'
-        // Base lógica: Se passar "/" direto a gente reinicia para o root. Se escrever alguma pasta extra a 
-        // gente chama aquele buscador ali de cima até o target e verifica que ele tambem seja diretório!
+        // Aceita caminhos absolutos ("/teste2"), relativos ("teste2", "../x") ou só "/".
+        // resolve_path percorre o caminho e devolve o inode final e o novo current_path;
+        // depois conferimos que o destino é mesmo um diretório.
         else if (strncmp(cmd, "cd ", 3) == 0) {
             char *target = cmd + 3; // Ignora visualmente os 3 primeiros chars ('c', 'd', ' ')!
 
-            if (strcmp(target, "/") == 0) {
-                current_inode = 1;
-                strcpy(current_path, "/");
-            } else {
-                uint32 target_inode = find_inode_by_name(dev, sb, current_inode, target);
-                
-                if (target_inode != 0) {
-                    MinixInode tgt;
-                    minix_read_inode(dev, sb, target_inode, &tgt);
-                    // Comprovando com a mascara de pastas
-                    if ((tgt.mode & S_IFMT) == S_IFDIR) {
-                        current_inode = target_inode;
-                        
-                        // Atualiza a representação do caminho
-                        if (strcmp(target, ".") == 0) {
-                            // não faz nada com o current_path
-                        } else if (strcmp(target, "..") == 0) {
-                            // Subir de diretório (apaga até a última '/')
-                            int len = strlen(current_path);
-                            if (len > 1) { // Só volta se já não for a propria raiz "/"
-                                // Remove a última barra barra se ela estiver na ponta
-                                if (current_path[len-1] == '/') {
-                                    current_path[len-1] = '\0';
-                                    len--;
-                                }
-                                // procura de tras pra frente e corta na proxima barra
-                                while (len > 0 && current_path[len] != '/') len--;
-                                current_path[len+1] = '\0';
-                                if (len == 0) strcpy(current_path, "/");
-                            }
-                        } else {
-                            // Entrou em um novo diretório filho, concatena ele:
-                            // Só coloca a barra se a string atual ja nao termina com barra
-                            int l = strlen(current_path);
-                            if (l > 0 && current_path[l-1] != '/') strcat(current_path, "/");
-                            strcat(current_path, target);
-                        }
-                        
-                    } else {
-                        printf(TOMATO "cd: %s nao e um diretorio\n" COLOR_RESET, target);
-                    }
+            // O caminho novo só é aplicado se o destino existir e for diretório
+            char new_path[128];
+            strcpy(new_path, current_path);
+            uint32 target_inode = resolve_path(dev, sb, current_inode, target, new_path);
+
+            if (target_inode != 0) {
+                MinixInode tgt;
+                minix_read_inode(dev, sb, target_inode, &tgt);
+                // Comprovando com a mascara de pastas
+                if ((tgt.mode & S_IFMT) == S_IFDIR) {
+                    current_inode = target_inode;
+                    strcpy(current_path, new_path);
                 } else {
-                    printf(TOMATO "cd: pasta %s nao encontrada\n" COLOR_RESET, target);
+                    printf(TOMATO "cd: %s nao e um diretorio\n" COLOR_RESET, target);
                 }
+            } else {
+                printf(TOMATO "cd: pasta %s nao encontrada\n" COLOR_RESET, target);
             }
         }
 
         // Comando 3: 'cat'
-        // É a mesmissima lógica do CD. Procura pelo nome fornecido pelo usuário e checa se o 
+        // É a mesmissima lógica do CD. Resolve o caminho fornecido pelo usuário e checa se o 
         // target encontrado é realmento um arquivo de texto ao inves de uma pasta. Quando ele achar,
         // ele da leitura pura do minix_read_file e plota tudo em caracteres no console!
         else if (strncmp(cmd, "cat ", 4) == 0) {
             char *target = cmd + 4; // Ignorando ('c', 'a', 't', ' ')
-            uint32 target_inode = find_inode_by_name(dev, sb, current_inode, target);
+            uint32 target_inode = resolve_path(dev, sb, current_inode, target, 0);
             
             if (target_inode != 0) {
                 MinixInode tgt;

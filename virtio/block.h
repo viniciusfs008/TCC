@@ -12,6 +12,11 @@
 #define VIRTIO_BLK_T_OUT          1
 #define VIRTIO_BLK_T_FLUSH        4
 
+// Valores do byte de status escrito pelo dispositivo ao fim da requisição
+#define VIRTIO_BLK_S_OK           0
+#define VIRTIO_BLK_S_IOERR        1
+#define VIRTIO_BLK_S_UNSUPP       2
+
 // Estrutura do cabeçalho de uma requisição de bloco (conforme especificação VirtIO)
 typedef struct virtio_blk_req_header {
     uint32 blktype;
@@ -41,15 +46,16 @@ typedef struct BlockDevice {
     VirtQ *queue;
     uint64 dev;
     uint32 idx;
-    uint32 ack_used_idx;
+    uint16 ack_used_idx;    // Mesmo tamanho de used.index, para virar junto em 65535 -> 0
     int read_only;
 } BlockDevice;
 
 // Inicialização do dispositivo de bloco
 int setup_block_device(uint64 ptr);
 
-// Função para realizar uma operação de bloco
-void block_op(uint32 dev, void *buffer, uint32 size, uint64 offset, int write);
+// Função para realizar uma operação de bloco.
+// Retorna 1 em sucesso, 0 em falha (dispositivo inválido ou status de erro).
+int block_op(uint32 dev, void *buffer, uint32 size, uint64 offset, int write);
 
 
 

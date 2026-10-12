@@ -40,6 +40,7 @@ SECTIONS
     /* A pilha é alinhada na memória em múltiplos de 16 (bytes) */
     . = ALIGN(16); 
     PROVIDE(stack_start = .);
-    PROVIDE(stack_end = stack_start + 0x4000); /* 0x1000 * 4: 4096 bytes por CPU */
+    /* Deve ser STACK_SIZE (boot.s) × número de CPUs */
+    PROVIDE(stack_end = stack_start + 0x10000); /* 0x4000 * 4: 16 KiB por CPU */
     /* PROVIDE(heap_start = stack_end); */
 }

@@ -8,7 +8,7 @@ set -e  # para parar se der erro
 
 # ==============================
 
-IMG_NAME="minix.img"
+IMG_NAME="${2:-minix.img}"  # arquivo de saída (opcional, padrão minix.img)
 IMG_SIZE_MB=50
 SRC_DIR="$1"           # diretório passado como argumento
 MOUNT_POINT="/mnt/minix_tmp"
@@ -20,7 +20,7 @@ MOUNT_POINT="/mnt/minix_tmp"
 # ==============================
 
 if [ -z "$SRC_DIR" ]; then
-echo "Uso: $0 <diretorio_origem>"
+echo "Uso: $0 <diretorio_origem> [imagem_saida]"
 exit 1
 fi
 

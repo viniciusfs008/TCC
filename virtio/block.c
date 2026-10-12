@@ -1,4 +1,6 @@
 #include "block.h"
+#include "../defs.h"
+#include "../string.h"
 
 // Array para armazenar dispositivos de bloco
 BlockDevice BLOCK_DEVICES[MAX_BLOCK_DEVICES]; // Supondo que 8 é o número máximo de dispositivos de bloco
@@ -72,6 +74,9 @@ int setup_block_device(uint64 addr) {
     // Se isso estiver errado, nós e o dispositivo nos referiremos
     // a endereços de memória diferentes e, portanto, obteremos os dados errados no anel usado.
     VirtQ *queue_ptr = (VirtQ*) alloc(num_pages);
+    // A página pode conter lixo de um uso anterior. Os índices dos anéis
+    // available e used precisam começar em zero, então zeramos a fila toda.
+    memset(queue_ptr, 0, num_pages * PAGE_SIZE);
     uint32 queue_pfn = ((uint64)queue_ptr)/PAGE_SIZE; 
     write_to_reg(addr, GUEST_PAGE_SIZE, PAGE_SIZE);
     // QueuePFN é um número de página física, no entanto,
@@ -99,10 +104,10 @@ int setup_block_device(uint64 addr) {
 }
 
 // Função para realizar operações de leitura/escrita no dispositivo de bloco
-void block_op(uint32 dev, void *buffer, uint32 size, uint64 offset, int write) {
+int block_op(uint32 dev, void *buffer, uint32 size, uint64 offset, int write) {
     if (dev == 0 || dev > MAX_BLOCK_DEVICES || BLOCK_DEVICES[dev - 1].queue == NULL) {
         printf("Dispositivo inválido!\n");
-        return;
+        return 0;
     }
 
     BlockDevice *bdev = &BLOCK_DEVICES[dev - 1];
@@ -110,7 +115,7 @@ void block_op(uint32 dev, void *buffer, uint32 size, uint64 offset, int write) {
     // Verifica se o dispositivo é somente leitura e estamos tentando escrever
     if (bdev->read_only && write) {
         printf("Tentando escrever em um dispositivo somente leitura!\n");
-        return;
+        return 0;
     }
 
     // Calcula o setor baseado no offset
@@ -149,18 +154,37 @@ void block_op(uint32 dev, void *buffer, uint32 size, uint64 offset, int write) {
 
     // Adiciona o cabeçalho (head) ao anel disponível (Available Ring)
     bdev->queue->av.ring[bdev->queue->av.index % QNUM] = head;
+    // Barreira: os descritores e a entrada do anel precisam estar visíveis
+    // para o dispositivo antes de ele ver o novo av.index.
+    __sync_synchronize();
     bdev->queue->av.index++;
+
+    // Barreira: garante que todas as escritas acima terminaram antes do aviso
+    __sync_synchronize();
 
     // Notifica o dispositivo sobre a requisição
     write_to_reg(bdev->dev, QUEUE_NOTIFY, 0);
 
     // Espera o dispositivo processar comparando o índice do anel 'used'
-    // O dispositivo incrementa bdev->queue->used.index quando completa uma requisição
-    while (bdev->ack_used_idx == bdev->queue->used.index);
-    
+    // O dispositivo incrementa bdev->queue->used.index quando completa uma requisição.
+    // O volatile obriga o compilador a reler a memória a cada volta do laço.
+    while (bdev->ack_used_idx == *(volatile uint16 *) &bdev->queue->used.index);
+
+    // Barreira: só lê o status depois de observar a conclusão
+    __sync_synchronize();
+
     // Atualiza nosso índice de reconhecimento
     bdev->ack_used_idx++;
 
+    // Confere o byte de status escrito pelo dispositivo
+    uint8 status = *(volatile uint8 *) &blk_request->status.status;
+
     // Libera a memória da requisição
     dealloc(blk_request);
+
+    if (status != VIRTIO_BLK_S_OK) {
+        printf("block_op: erro no setor %d (status %d)\n", (int) sector, status);
+        return 0;
+    }
+    return 1;
 }
